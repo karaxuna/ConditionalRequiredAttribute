@@ -2,8 +2,6 @@
         var andExpressions = JSON.parse(parameters['expression']);
         var result = true;
 
-        debugger;
-
         andExpressions.forEach(function (andExpression) {
             var _res = false;
             andExpression.forEach(function (orExpression) {
