@@ -1,0 +1,133 @@
+using System;
+using System.Runtime.Serialization;
+
+namespace CustomAttributes
+{
+    public class ExpressionParser
+    {
+        public string AndOperator = "&&";
+        public string OrOperator = "||";
+
+        public bool Parse(object ob, string text)
+        {
+            bool result = true;
+            var andExpressions = GetEqualityExpressions(text);
+            foreach (var andExpression in andExpressions)
+            {
+                var _res = false;
+                foreach (var orExpression in andExpression)
+                {
+                    if (orExpression.Execute(ob))
+                    {
+                        _res = true;
+                        break;
+                    }
+                }
+                if (!_res)
+                {
+                    result = false;
+                    break;
+                }
+            }
+            return result;
+        }
+
+        public EqualityExpression[][] GetEqualityExpressions(string text)
+        {
+            var andParts = text.Split(AndOperator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+            var andExpressions = new EqualityExpression[andParts.Length][];
+
+            for (var i = 0; i < andParts.Length; i++)
+            {
+                var andPart = andParts[i];
+                var orParts = andPart.Split(OrOperator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+                andExpressions[i] = new EqualityExpression[orParts.Length];
+                for (var j = 0; j < orParts.Length; j++)
+                {
+                    var orPart = orParts[j];
+                    andExpressions[i][j] = new EqualityExpression(orPart);
+                }
+            }
+            return andExpressions;
+        }
+    }
+
+    [DataContract(Name = "EqualityExpression")]
+    public class EqualityExpression
+    {
+        [DataMember]
+        public EqualityOperator Operator;
+        [DataMember]
+        public string Property;
+        [DataMember]
+        public dynamic Value;
+
+        private readonly EqualityOperator[] _operators = new[]
+                                                       {
+                                                           new EqualityOperator("==", (a, b) => a == b),
+                                                           new EqualityOperator("!=", (a, b) => a != b),
+                                                           new EqualityOperator(">", (a, b) => a > b),
+                                                           new EqualityOperator("<", (a, b) => a < b),
+                                                           new EqualityOperator(">=", (a, b) => a >= b),
+                                                           new EqualityOperator("<=", (a, b) => a <= b)
+                                                       };
+
+        public EqualityExpression(string text)
+        {
+            Operator = null;
+            foreach (var op in _operators)
+            {
+                if(text.Contains(op.Text))
+                {
+                    Operator = op;
+                    break;
+                }
+            }
+
+            if (Operator == null)
+                throw new Exception("Operator is missing");
+
+            var parts = text.Split(Operator.Text.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2)
+                throw new Exception("Syntax error");
+
+            Property = parts[0];
+            Value = _GetValue(parts[1]);
+        }
+
+        private dynamic _GetValue(string valueString)
+        {
+            if (valueString.StartsWith("'") && valueString.EndsWith("'"))
+                return valueString.Replace("'", string.Empty);
+            bool b;
+            if (bool.TryParse(valueString, out b))
+                return b;
+            double num;
+            if (double.TryParse(valueString, out num))
+                return num;
+
+            throw new Exception("Unknown value type");
+        }
+
+        public bool Execute(object ob)
+        {
+            var value = ob.GetType().GetProperty(Property).GetValue(ob, null);
+            return Operator.Method(value, Value);
+        }
+
+        [DataContract(Name = "EqualityOperator")]
+        public class EqualityOperator
+        {
+            [DataMember]
+            public string Text;
+            public Func<dynamic, dynamic, bool> Method;
+
+            public EqualityOperator(string text, Func<dynamic, dynamic, bool> method)
+            {
+                Text = text;
+                Method = method;
+            }
+        }
+    }
+}
