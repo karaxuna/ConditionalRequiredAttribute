@@ -92,12 +92,14 @@ namespace CustomAttributes
             if (parts.Length != 2)
                 throw new Exception("Syntax error");
 
-            Property = parts[0];
+            Property = parts[0].Trim();
             Value = _GetValue(parts[1]);
         }
 
         private dynamic _GetValue(string valueString)
         {
+            valueString = valueString.Trim();
+            
             if (valueString.StartsWith("'") && valueString.EndsWith("'"))
                 return valueString.Replace("'", string.Empty);
             bool b;

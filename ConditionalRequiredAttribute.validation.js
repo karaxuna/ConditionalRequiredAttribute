@@ -81,5 +81,5 @@
 
     $.validator.unobtrusive.adapters.add('conditionalrequired', ['expression'], function(options) {
         options.rules['conditionalrequired'] = { expression: options.params['expression'] };
-        options.messages['expression'] = options.message;
+        options.messages['conditionalrequired'] = options.message;
     });
